@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ジョッキの取っ手 (Handle outer & inner) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M66,50 C76,50 82,53 82,62 C82,71 76,74 66,74 L64,74 L64,68 L66,68 C72,68 76,66 76,62 C76,58 72,56 66,56 L64,56 L64,50 Z"/>
+
+    <!-- グラス本体の輪郭・ガラスベース (Glass base & outline) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M35,46 L69,46 L67,78 C67,82 63,84 58,84 L46,84 C41,84 37,82 37,78 L35,46 Z"/>
+
+    <!-- グラスの厚底部分 (Thick glass bottom) -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M37.5,74 L66.5,74 L66,78 C66,80.5 63,82 58,82 L46,82 C41,82 38,80.5 38,78 Z"/>
+
+    <!-- ジョッキ内のビール液体 (Golden Beer) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M37,47 L67,47 L65.5,74 L38.5,74 Z"/>
+
+    <!-- ビールの濃い陰影 (Beer depth) -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M52,47 L67,47 L65.5,74 L54,74 Z"/>
+
+    <!-- グラスの縦リブ/カットの反射ハイライト (Glass facets shine) -->
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M41,49 L44,49 L43.5,72 L41,72 Z"/>
+    <path
+        android:fillColor="#FEF08A"
+        android:pathData="M48,49 L51,49 L50.5,72 L48,72 Z"/>
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M56,49 L58,49 L57.5,72 L56,72 Z"/>
+
+    <!-- 炭酸の気泡 (Bubbles) -->
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M45,67m-1.2,0a1.2,1.2 0 1,1 2.4,0a1.2,1.2 0 1,1 -2.4,0"/>
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M59,63m-1,0a1,1 0 1,1 2,0a1,1 0 1,1 -2,0"/>
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M49,56m-1.2,0a1.2,1.2 0 1,1 2.4,0a1.2,1.2 0 1,1 -2.4,0"/>
+
+    <!-- クリーミーなビールの泡 (Creamy Beer Foam) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M33,46 C32,41 36,37 40,38 C42,34 48,33 52,36 C55,32 62,33 64,36 C68,36 71,40 70,45 C71,47 70,49 68,49 L35,49 C33,49 32,47 33,46 Z"/>
+
+    <!-- 泡の立体的な陰影 (Foam subtle shadow) -->
+    <path
+        android:fillColor="#F1F5F9"
+        android:pathData="M35,47 C37,48 40,48 43,47 C47,48 51,48 55,47 C59,48 64,48 67,47 L68,49 L34,49 Z"/>
+
+    <!-- 泡のグラスへの垂れ落ち (Foam drip) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,48 C43,53 46,53 46,48 Z"/>
+</vector>

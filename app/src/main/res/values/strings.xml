@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">alc-logger</string>
+    <string name="health_connect_rationale">alc-logger は飲酒量（アルコール量および推定カロリー）を Health Connect に自動記録・集計するために、栄養データの読み取りおよび書き込み権限を必要とします。</string>
+</resources>
