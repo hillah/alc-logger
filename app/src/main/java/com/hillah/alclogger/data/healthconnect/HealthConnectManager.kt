@@ -114,6 +114,65 @@ class HealthConnectManager(private val context: Context) {
     }
 
     /**
+     * スロットにないお酒を自由入力（品名・純アルコール量・カロリー）で記録する
+     */
+    suspend fun recordCustomDrink(
+        name: String,
+        alcoholGrams: Double,
+        caloriesKcal: Double
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val client = healthConnectClient ?: return@withContext Result.failure(
+            IllegalStateException("Health Connect が利用できません。アプリがインストールされているか確認してください。")
+        )
+        try {
+            val zoneId = ZoneId.systemDefault()
+            val nowZoned = ZonedDateTime.now(zoneId)
+            val drinkingDate = getDrinkingDate(nowZoned)
+
+            // 深夜0:00〜03:59の場合は「前日の晩酌」としてGarmin/Health Connectで当日集計されるよう前日23:59にシフト
+            val (startTime, endTime) = if (nowZoned.hour < 4) {
+                val secOffset = ((nowZoned.minute * 60 + nowZoned.second) % 55)
+                val adjustedEnd = drinkingDate.atTime(23, 59, secOffset).atZone(zoneId).toInstant()
+                val adjustedStart = adjustedEnd.minusSeconds(60)
+                adjustedStart to adjustedEnd
+            } else {
+                val nowInstant = nowZoned.toInstant()
+                nowInstant.minusSeconds(60) to nowInstant
+            }
+            val zoneOffset = zoneId.rules.getOffset(endTime)
+
+            val actualTimeNote = if (nowZoned.hour < 4) {
+                String.format("(深夜%02d:%02d)", nowZoned.hour, nowZoned.minute)
+            } else null
+
+            val cleanName = name.ifBlank { "カスタムのお酒" }
+            val displayName = listOfNotNull(
+                cleanName,
+                actualTimeNote,
+                "[純アルコール:${alcoholGrams}g]"
+            ).joinToString(" ")
+
+            val record = NutritionRecord(
+                startTime = startTime,
+                startZoneOffset = zoneOffset,
+                endTime = endTime,
+                endZoneOffset = zoneOffset,
+                name = displayName,
+                energy = Energy.kilocalories(caloriesKcal),
+                mealType = MealType.MEAL_TYPE_UNKNOWN
+            )
+
+            val response = client.insertRecords(listOf(record))
+            val insertedId = response.recordIdsList.firstOrNull()
+                ?: return@withContext Result.failure(IllegalStateException("レコードIDの取得に失敗しました。"))
+
+            Result.success(insertedId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * 今日の飲酒レコードを全件読み込み（午前4時切り替え対応）
      */
     suspend fun readTodayDrinkRecords(): Result<List<DrinkRecordItem>> = withContext(Dispatchers.IO) {

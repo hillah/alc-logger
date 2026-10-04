@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Refresh
@@ -92,6 +93,7 @@ fun MainScreen(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showNfcWriteDialog by remember { mutableStateOf(false) }
+    var showCustomDrinkDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collectLatest { message ->
@@ -155,11 +157,22 @@ fun MainScreen(
 
             // 3. クイック手動追加ボタン（3スロット）
             item {
-                Text(
-                    text = "クイック記録（手動追加）",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "クイック記録（手動追加）",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TextButton(onClick = { showCustomDrinkDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("自由入力", fontSize = 13.sp)
+                    }
+                }
             }
 
             item {
@@ -169,19 +182,38 @@ fun MainScreen(
                 )
             }
 
-            // 4. 直前の1杯取り消しボタン
+            // 4. アクションボタン（直前取り消し & 自由入力）
             item {
-                OutlinedButton(
-                    onClick = { viewModel.onUndoLastDrink() },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("直前の1杯を取り消す")
+                    OutlinedButton(
+                        onClick = { viewModel.onUndoLastDrink() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("直前を取り消す", maxLines = 1, fontSize = 13.sp)
+                    }
+
+                    FilledTonalButton(
+                        onClick = { showCustomDrinkDialog = true },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = AmberContainer,
+                            contentColor = AmberOnContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("自由入力で追加", maxLines = 1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -238,6 +270,17 @@ fun MainScreen(
             slots = uiState.drinkSlots,
             onSave = { config -> viewModel.onSaveSlotConfig(config) },
             onDismiss = { showSettingsDialog = false }
+        )
+    }
+
+    // 自由入力記録ダイアログ
+    if (showCustomDrinkDialog) {
+        CustomDrinkDialog(
+            onAdd = { name, alcoholGrams, caloriesKcal ->
+                viewModel.onAddCustomDrink(name, alcoholGrams, caloriesKcal)
+                showCustomDrinkDialog = false
+            },
+            onDismiss = { showCustomDrinkDialog = false }
         )
     }
 }
@@ -801,3 +844,225 @@ private fun DrinkSettingsDialog(
         }
     )
 }
+
+/**
+ * スロット外のお酒を自由に入力して記録するダイアログ
+ */
+@Composable
+private fun CustomDrinkDialog(
+    onAdd: (name: String, alcoholGrams: Double, caloriesKcal: Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var alcoholStr by remember { mutableStateOf("") }
+    var volumeStr by remember { mutableStateOf("") }
+    var abvStr by remember { mutableStateOf("") }
+    var caloriesStr by remember { mutableStateOf("") }
+
+    // 度数と容量から純アルコール量を自動再計算するヘルパー
+    fun recalculateAlcoholFromVolumeAbv() {
+        val v = volumeStr.toDoubleOrNull() ?: return
+        val a = abvStr.toDoubleOrNull() ?: return
+        val calculated = ((v * (a / 100.0) * 0.8 * 10.0).roundToInt() / 10.0)
+        alcoholStr = calculated.toString()
+        val defaultCal = (calculated * 7.1).roundToInt()
+        caloriesStr = defaultCal.toString()
+    }
+
+    // クイック入力プリセット
+    val presets = remember {
+        listOf(
+            Triple("赤ワイン", 12.0, 85.0),
+            Triple("白ワイン", 11.5, 80.0),
+            Triple("ウイスキー", 10.0, 70.0),
+            Triple("日本酒 1合", 21.6, 185.0),
+            Triple("生中 500ml", 20.0, 200.0),
+            Triple("焼酎水割り", 12.0, 95.0)
+        )
+    }
+
+    val alcoholVal = alcoholStr.toDoubleOrNull() ?: 0.0
+    val canSubmit = alcoholVal > 0.0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🥃", fontSize = 22.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("お酒を自由入力で記録", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+        },
+        text = {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    Text(
+                        text = "スロットにないお酒の品名と純アルコール量を入力して記録できます。",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // クイック入力チップ
+                item {
+                    Text(
+                        text = "クイック選択:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        presets.take(3).forEach { (pName, pAlc, pCal) ->
+                            FilledTonalButton(
+                                onClick = {
+                                    name = pName
+                                    alcoholStr = pAlc.toString()
+                                    caloriesStr = pCal.toInt().toString()
+                                },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(pName, fontSize = 11.sp, maxLines = 1)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        presets.drop(3).take(3).forEach { (pName, pAlc, pCal) ->
+                            FilledTonalButton(
+                                onClick = {
+                                    name = pName
+                                    alcoholStr = pAlc.toString()
+                                    caloriesStr = pCal.toInt().toString()
+                                },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(pName, fontSize = 11.sp, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+
+                // 品名入力欄
+                item {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("お酒の品名 (例: グラス赤ワイン)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+
+                // 純アルコール量入力欄
+                item {
+                    OutlinedTextField(
+                        value = alcoholStr,
+                        onValueChange = {
+                            alcoholStr = it
+                            val alc = it.toDoubleOrNull()
+                            if (alc != null && caloriesStr.isBlank()) {
+                                caloriesStr = (alc * 7.1).roundToInt().toString()
+                            }
+                        },
+                        label = { Text("純アルコール量 (g) *必須") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                }
+
+                // 容量 & 度数からの計算補助
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "💡 容量と度数から自動計算:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = volumeStr,
+                                    onValueChange = {
+                                        volumeStr = it
+                                        recalculateAlcoholFromVolumeAbv()
+                                    },
+                                    label = { Text("容量 (ml)") },
+                                    modifier = Modifier.weight(1f),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true
+                                )
+                                OutlinedTextField(
+                                    value = abvStr,
+                                    onValueChange = {
+                                        abvStr = it
+                                        recalculateAlcoholFromVolumeAbv()
+                                    },
+                                    label = { Text("度数 (%)") },
+                                    modifier = Modifier.weight(1f),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    singleLine = true
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 推定カロリー入力欄
+                item {
+                    OutlinedTextField(
+                        value = caloriesStr,
+                        onValueChange = { caloriesStr = it },
+                        label = { Text("推定カロリー (kcal)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val finalName = name.ifBlank { "カスタムのお酒" }
+                    val finalCalories = caloriesStr.toDoubleOrNull() ?: ((alcoholVal * 7.1).roundToInt().toDouble())
+                    onAdd(finalName, alcoholVal, finalCalories)
+                },
+                enabled = canSubmit,
+                colors = ButtonDefaults.buttonColors(containerColor = AmberPrimary)
+            ) {
+                Text("記録する", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("キャンセル")
+            }
+        }
+    )
+}
+

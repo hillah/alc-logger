@@ -161,6 +161,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * 自由入力によるカスタムお酒の記録
+     */
+    fun onAddCustomDrink(name: String, alcoholGrams: Double, caloriesKcal: Double) {
+        val drinkName = name.ifBlank { "カスタムのお酒" }
+        NfcHelper.triggerSuccessVibration(getApplication())
+
+        viewModelScope.launch {
+            val result = healthConnectManager.recordCustomDrink(drinkName, alcoholGrams, caloriesKcal)
+            result.onSuccess {
+                _eventFlow.emit("🥃 $drinkName を記録しました！(${alcoholGrams}g)")
+                refreshTodayRecords()
+            }.onFailure { e ->
+                _eventFlow.emit("記録に失敗しました: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    /**
      * 直前の1杯を取り消す
      */
     fun onUndoLastDrink() {
